@@ -1,0 +1,463 @@
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import tkinter as tk
+from matplotlib.widgets import Cursor
+
+# Funções de proteção e correntes
+V = 4600  # Tensão do motor em volts
+P_hp = 200  # Potência em CV (HP)
+P_kw = P_hp * 0.7355  # Potência convertida para kW
+cos_phi = 0.9  # Fator de potência assumido
+
+# Corrente nominal do motor (em amperes)
+I_nom = P_kw / (np.sqrt(3) * V * cos_phi) * 1000  # Convertendo para watts
+
+# Correntes de atuação
+I_50 = 8 * I_nom  # Função 50: Instantânea, 8 vezes a corrente nominal
+I_51 = 1.5 * I_nom  # Função 51: Temporizada, 1.5 vezes a corrente nominal
+
+# Intervalo de corrente para o gráfico (1x a 10x a corrente nominal)
+I_range = np.logspace(np.log10(I_nom), np.log10(10 * I_nom), 1000)
+
+# Curva de tempo-inverso da função 51 (padrão IEC para simplificação)
+def t_51(I, I_pickup, TMS=1.0):
+    return TMS * 0.14 / ((I / I_pickup) ** 0.02 - 1)  # Equação inversa para função 51
+
+# Função para atualizar o gráfico
+def update_graph():
+    # Limpa o gráfico
+    ax.clear()
+
+    # Plotando as curvas de proteção
+    ax.plot(I_range, t_51(I_range, I_51), label='Função 51 (Temporizada)', color='blue')
+    ax.axvline(I_50, color='red', linestyle='--', label='Função 50 (Instantânea)')
+
+    # Atualizando corrente de curto-circuito
+    ax.axvline(current_cc, color='black', linestyle='-.', label=f'Corrente Curto {current_cc:.2f} A')
+
+    # Atualizando corrente nominal
+    ax.axvline(current_nom, color='green', linestyle='-', label=f'Corrente Nominal {current_nom:.2f} A')
+
+    # Configurando o gráfico com eixos logarítmicos
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+
+    # Adicionando título e rótulos dos eixos
+    ax.set_title('Curva de Proteção - Funções 50 e 51')
+    ax.set_xlabel('Corrente (A)')
+    ax.set_ylabel('Tempo (s)')
+
+    # Configurando a legenda
+    ax.legend(loc='upper right')
+
+    # Grade no gráfico
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+
+    # Renderizando o gráfico
+    canvas.draw()
+
+# Função para atualizar a posição do mouse
+def motion(event):
+    if event.inaxes:  # Verifica se o mouse está sobre o gráfico
+        x = event.xdata
+        y = event.ydata
+        if x is not None and y is not None:
+            current_info.set(f'Corrente: {x:.2f} A, Tempo: {y:.2f} s')
+
+# Valores iniciais para corrente de curto-circuito e corrente nominal
+current_cc = 2 * I_nom
+current_nom = I_nom
+
+# Criando a janela principal
+root = tk.Tk()
+root.title("Curva de Proteção - Funções 50 e 51")
+
+# Criando a figura do Matplotlib
+fig, ax = plt.subplots(figsize=(10, 8))
+
+# Criando a figura do Matplotlib e a associando ao canvas
+canvas = FigureCanvasTkAgg(fig, master=root)
+canvas_widget = canvas.get_tk_widget()
+canvas_widget.pack(fill=tk.BOTH, expand=True)
+
+# Plotando as curvas de proteção inicialmente
+update_graph()
+
+# Adicionando cursor ao gráfico
+cursor = Cursor(ax, useblit=True, color='red', linewidth=1)
+
+# Slider para corrente de curto-circuito
+slider_cc = tk.Scale(root, from_=I_nom, to=10 * I_nom, resolution=1, orient=tk.HORIZONTAL,
+                     label="Corrente de Curto-Circuito (A)", command=lambda x: update_cc(float(x)))
+slider_cc.set(current_cc)
+slider_cc.pack(fill=tk.X)
+
+# Slider para corrente nominal
+slider_nom = tk.Scale(root, from_=I_nom, to=10 * I_nom, resolution=1, orient=tk.HORIZONTAL,
+                      label="Corrente Nominal (A)", command=lambda x: update_nom(float(x)))
+slider_nom.set(current_nom)
+slider_nom.pack(fill=tk.X)
+
+# Rótulo para exibir a corrente e o tempo
+current_info = tk.StringVar()
+info_label = tk.Label(root, textvariable=current_info, font=('Helvetica', 12))
+info_label.pack()
+
+# Funções para atualizar as correntes a partir dos sliders
+def update_cc(value):
+    global current_cc
+    current_cc = value
+    update_graph()
+
+def update_nom(value):
+    global current_nom
+    current_nom = value
+    update_graph()
+
+# Conectando a função de movimento do mouse
+fig.canvas.mpl_connect('motion_notify_event', motion)
+
+# Iniciando o loop principal da interface
+root.mainloop()
+
+---------------------------------------------------------------------------------------------------------
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import tkinter as tk
+from matplotlib.widgets import Cursor
+
+# Funções de proteção e correntes
+V = 4600  # Tensão do motor em volts
+P_hp = 200  # Potência em CV (HP)
+P_kw = P_hp * 0.7355  # Potência convertida para kW
+cos_phi = 0.9  # Fator de potência assumido
+
+# Corrente nominal do motor (em amperes)
+I_nom = P_kw / (np.sqrt(3) * V * cos_phi) * 1000  # Convertendo para watts
+
+# Correntes de atuação
+I_50 = 8 * I_nom  # Função 50: Instantânea, 8 vezes a corrente nominal
+I_51 = 1.5 * I_nom  # Função 51: Temporizada, 1.5 vezes a corrente nominal
+
+# Corrente ANSI do transformador (substitua pelo valor real)
+I_ANSI = 5 * I_nom  # Exemplo: 5 vezes a corrente nominal
+
+# Intervalo de corrente para o gráfico (1x a 10x a corrente nominal)
+I_range = np.logspace(np.log10(I_nom), np.log10(10 * I_nom), 1000)
+
+# Curva de tempo-inverso da função 51 (padrão IEC para simplificação)
+def t_51(I, I_pickup, TMS=1.0):
+    return TMS * 0.14 / ((I / I_pickup) ** 0.02 - 1)  # Equação inversa para função 51
+
+# Função para atualizar o gráfico
+def update_graph():
+    # Limpa o gráfico
+    ax.clear()
+
+    # Plotando as curvas de proteção
+    ax.plot(I_range, t_51(I_range, I_51), label='Função 51 (Temporizada)', color='blue')
+    ax.axvline(I_50, color='red', linestyle='--', label='Função 50 (Instantânea)')
+
+    # Atualizando corrente de curto-circuito
+    ax.axvline(current_cc, color='black', linestyle='-.', label=f'Corrente Curto {current_cc:.2f} A')
+
+    # Atualizando corrente nominal
+    ax.axvline(current_nom, color='green', linestyle='-', label=f'Corrente Nominal {current_nom:.2f} A')
+
+    # Adicionando ponto para corrente ANSI do transformador
+    ax.plot(I_ANSI, t_51(I_ANSI, I_51), 'o', color='orange', label=f'Corrente ANSI {I_ANSI:.2f} A')
+
+    # Configurando o gráfico com eixos logarítmicos
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+
+    # Adicionando título e rótulos dos eixos
+    ax.set_title('Curva de Proteção - Funções 50 e 51')
+    ax.set_xlabel('Corrente (A)')
+    ax.set_ylabel('Tempo (s)')
+
+    # Configurando a legenda
+    ax.legend(loc='upper right')
+
+    # Grade no gráfico
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+
+    # Renderizando o gráfico
+    canvas.draw()
+
+# Função para atualizar a posição do mouse
+def motion(event):
+    if event.inaxes:  # Verifica se o mouse está sobre o gráfico
+        x = event.xdata
+        y = event.ydata
+        if x is not None and y is not None:
+            current_info.set(f'Corrente: {x:.2f} A, Tempo: {y:.2f} s')
+
+# Valores iniciais para corrente de curto-circuito, corrente nominal e corrente ANSI
+current_cc = 2 * I_nom
+current_nom = I_nom
+current_ANSI = I_ANSI
+
+# Criando a janela principal
+root = tk.Tk()
+root.title("Curva de Proteção - Funções 50 e 51")
+
+# Criando a figura do Matplotlib
+fig, ax = plt.subplots(figsize=(10, 8))
+
+# Criando a figura do Matplotlib e a associando ao canvas
+canvas = FigureCanvasTkAgg(fig, master=root)
+canvas_widget = canvas.get_tk_widget()
+canvas_widget.pack(fill=tk.BOTH, expand=True)
+
+# Plotando as curvas de proteção inicialmente
+update_graph()
+
+# Adicionando cursor ao gráfico
+cursor = Cursor(ax, useblit=True, color='red', linewidth=1)
+
+# Slider para corrente de curto-circuito
+slider_cc = tk.Scale(root, from_=I_nom, to=10 * I_nom, resolution=1, orient=tk.HORIZONTAL,
+                     label="Corrente de Curto-Circuito (A)", command=lambda x: update_cc(float(x)))
+slider_cc.set(current_cc)
+slider_cc.pack(fill=tk.X)
+
+# Slider para corrente nominal
+slider_nom = tk.Scale(root, from_=I_nom, to=10 * I_nom, resolution=1, orient=tk.HORIZONTAL,
+                      label="Corrente Nominal (A)", command=lambda x: update_nom(float(x)))
+slider_nom.set(current_nom)
+slider_nom.pack(fill=tk.X)
+
+# Slider para corrente ANSI
+slider_ansi = tk.Scale(root, from_=I_nom, to=10 * I_nom, resolution=1, orient=tk.HORIZONTAL,
+                       label="Corrente ANSI (A)", command=lambda x: update_ansi(float(x)))
+slider_ansi.set(current_ANSI)
+slider_ansi.pack(fill=tk.X)
+
+# Rótulo para exibir a corrente e o tempo
+current_info = tk.StringVar()
+info_label = tk.Label(root, textvariable=current_info, font=('Helvetica', 12))
+info_label.pack()
+
+# Funções para atualizar as correntes a partir dos sliders
+def update_cc(value):
+    global current_cc
+    current_cc = value
+    update_graph()
+
+def update_nom(value):
+    global current_nom
+    current_nom = value
+    update_graph()
+
+def update_ansi(value):
+    global current_ANSI, I_ANSI
+    current_ANSI = value
+    I_ANSI = value  # Atualizando o valor da corrente ANSI
+    update_graph()
+
+# Conectando a função de movimento do mouse
+fig.canvas.mpl_connect('motion_notify_event', motion)
+
+# Iniciando o loop principal da interface
+root.mainloop()
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_kivyagg import FigureCanvasKivyAgg
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.slider import Slider
+from kivy.uix.label import Label
+
+# Funções de proteção e correntes
+V = 4600  # Tensão do motor em volts
+P_hp = 200  # Potência em CV (HP)
+P_kw = P_hp * 0.7355  # Potência convertida para kW
+cos_phi = 0.9  # Fator de potência assumido
+
+# Corrente nominal do motor (em amperes)
+I_nom = P_kw / (np.sqrt(3) * V * cos_phi) * 1000  # Convertendo para watts
+
+# Correntes de atuação
+I_50 = 8 * I_nom  # Função 50: Instantânea, 8 vezes a corrente nominal
+I_51 = 1.5 * I_nom  # Função 51: Temporizada, 1.5 vezes a corrente nominal
+
+# Intervalo de corrente para o gráfico (1x a 10x a corrente nominal)
+I_range = np.logspace(np.log10(I_nom), np.log10(10 * I_nom), 1000)
+
+# Função para calcular tempo
+def t_51(I, I_pickup, TMS=1.0):
+    return TMS * 0.14 / ((I / I_pickup) ** 0.02 - 1)  # Equação inversa para função 51
+
+# Classe principal do aplicativo Kivy
+class ProtectionCurveApp(App):
+    def build(self):
+        self.layout = BoxLayout(orientation='vertical')
+
+        # Criação do gráfico
+        self.fig, self.ax = plt.subplots(figsize=(8, 6))
+        self.canvas = FigureCanvasKivyAgg(self.fig)
+        self.layout.add_widget(self.canvas)
+
+        # Sliders
+        self.slider_cc = Slider(min=I_nom, max=10 * I_nom, value=2 * I_nom)
+        self.slider_nom = Slider(min=I_nom, max=10 * I_nom, value=I_nom)
+        self.slider_ansi = Slider(min=I_nom, max=10 * I_nom, value=5 * I_nom)
+
+        # Labels
+        self.label_cc = Label(text=f'Corrente Curto-Circuito: {self.slider_cc.value:.2f} A')
+        self.label_nom = Label(text=f'Corrente Nominal: {self.slider_nom.value:.2f} A')
+        self.label_ansi = Label(text=f'Corrente ANSI: {self.slider_ansi.value:.2f} A')
+
+        # Adicionando widgets
+        self.layout.add_widget(self.label_cc)
+        self.layout.add_widget(self.slider_cc)
+        self.layout.add_widget(self.label_nom)
+        self.layout.add_widget(self.slider_nom)
+        self.layout.add_widget(self.label_ansi)
+        self.layout.add_widget(self.slider_ansi)
+
+        # Bind de eventos dos sliders
+        self.slider_cc.bind(value=self.update_graph)
+        self.slider_nom.bind(value=self.update_graph)
+        self.slider_ansi.bind(value=self.update_graph)
+
+        # Plotando as curvas inicialmente
+        self.update_graph()
+
+        return self.layout
+
+    def update_graph(self, *args):
+        self.ax.clear()  # Limpa o gráfico
+
+        # Obtendo os valores dos sliders
+        current_cc = self.slider_cc.value
+        current_nom = self.slider_nom.value
+        current_ANSI = self.slider_ansi.value
+
+        # Plotando as curvas de proteção
+        self.ax.plot(I_range, t_51(I_range, I_51), label='Função 51 (Temporizada)', color='blue')
+        self.ax.axvline(I_50, color='red', linestyle='--', label='Função 50 (Instantânea)')
+        self.ax.axvline(current_cc, color='black', linestyle='-.', label=f'Corrente Curto {current_cc:.2f} A')
+        self.ax.axvline(current_nom, color='green', linestyle='-', label=f'Corrente Nominal {current_nom:.2f} A')
+        self.ax.plot(current_ANSI, t_51(current_ANSI, I_51), 'o', color='orange', label=f'Corrente ANSI {current_ANSI:.2f} A')
+
+        # Configurando o gráfico
+        self.ax.set_xscale('log')
+        self.ax.set_yscale('log')
+        self.ax.set_title('Curva de Proteção - Funções 50 e 51')
+        self.ax.set_xlabel('Corrente (A)')
+        self.ax.set_ylabel('Tempo (s)')
+        self.ax.legend()
+        self.ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+
+        self.canvas.draw()  # Renderiza o gráfico
+
+# Executando o aplicativo
+if __name__ == '__main__':
+    ProtectionCurveApp().run()
+"""
+
+import tkinter as tk
+from tkinter import messagebox
+
+# Função para calcular os parâmetros do transformador
+def calcular():
+    try:
+        Icc = float(entry_Icc.get())  # Corrente de Curto-Circuito
+        Imin = float(entry_Imin.get())  # Corrente Mínima
+        Isens = float(entry_Isens.get())  # Corrente Sensível
+        RTC = float(entry_RTC.get())  # Relação de Transformação
+        Vs = float(entry_Vs.get())  # Tensão
+        Zburden = float(entry_Zburden.get())  # Impedância de Carga
+        Rcabo = float(entry_Rcabo.get())  # Resistência do Cabo
+        Dcabo = float(entry_Dcabo.get())  # Comprimento do Cabo
+        Crele = float(entry_Crele.get())  # Potência do Relé
+        Vsnom = float(entry_Vsnom.get())  # Tensão Nominal
+        Zcarga = float(entry_Zcarga.get())  # Impedância de Carga
+
+        # Calculando a resistência total do cabo
+        Rtotal_cabo = Rcabo * (Dcabo / 1000)  # Convertendo km para m
+        Ztotal = Zburden + Rtotal_cabo + Zcarga  # Impedância Total do Circuito
+        I_carga = Vs / Ztotal  # Corrente de Carga
+        I_sobrecarga = I_carga / RTC  # Corrente de Sobrecarga
+
+        # Verificação do Relé
+        if I_sobrecarga > Isens:
+            relatorio = "O relé está em sobrecarga!"
+        else:
+            relatorio = "O relé está operando normalmente."
+
+        # Exibir resultados
+        resultados = (
+            f"Resistência Total do Cabo: {Rtotal_cabo:.4f} Ω\n"
+            f"Impedância Total do Circuito: {Ztotal:.4f} Ω\n"
+            f"Corrente de Carga: {I_carga:.4f} A\n"
+            f"Corrente de Sobrecarga: {I_sobrecarga:.4f} A\n"
+            f"{relatorio}\n"
+            f"Potência Total: {Vs * I_carga:.4f} VA"
+        )
+        messagebox.showinfo("Resultados", resultados)
+    except ValueError:
+        messagebox.showerror("Erro", "Por favor, insira valores numéricos válidos.")
+
+# Criando a janela principal
+root = tk.Tk()
+root.title("Cálculo do Transformador de Corrente")
+
+# Criando os campos de entrada
+tk.Label(root, text="Icc [A]:").grid(row=0, column=0)
+entry_Icc = tk.Entry(root)
+entry_Icc.grid(row=0, column=1)
+
+tk.Label(root, text="Imin [A]:").grid(row=1, column=0)
+entry_Imin = tk.Entry(root)
+entry_Imin.grid(row=1, column=1)
+
+tk.Label(root, text="Isens [A]:").grid(row=2, column=0)
+entry_Isens = tk.Entry(root)
+entry_Isens.grid(row=2, column=1)
+
+tk.Label(root, text="RTC:").grid(row=3, column=0)
+entry_RTC = tk.Entry(root)
+entry_RTC.grid(row=3, column=1)
+
+tk.Label(root, text="Vs [V]:").grid(row=4, column=0)
+entry_Vs = tk.Entry(root)
+entry_Vs.grid(row=4, column=1)
+
+tk.Label(root, text="Zburden [Ω]:").grid(row=5, column=0)
+entry_Zburden = tk.Entry(root)
+entry_Zburden.grid(row=5, column=1)
+
+tk.Label(root, text="Rcabo [Ω/km]:").grid(row=6, column=0)
+entry_Rcabo = tk.Entry(root)
+entry_Rcabo.grid(row=6, column=1)
+
+tk.Label(root, text="Dcabo [m]:").grid(row=7, column=0)
+entry_Dcabo = tk.Entry(root)
+entry_Dcabo.grid(row=7, column=1)
+
+tk.Label(root, text="Crele [VA]:").grid(row=8, column=0)
+entry_Crele = tk.Entry(root)
+entry_Crele.grid(row=8, column=1)
+
+tk.Label(root, text="Vsnom [V]:").grid(row=9, column=0)
+entry_Vsnom = tk.Entry(root)
+entry_Vsnom.grid(row=9, column=1)
+
+tk.Label(root, text="Zcarga [Ω]:").grid(row=10, column=0)
+entry_Zcarga = tk.Entry(root)
+entry_Zcarga.grid(row=10, column=1)
+
+# Botão de cálculo
+btn_calcular = tk.Button(root, text="Calcular", command=calcular)
+btn_calcular.grid(row=11, columnspan=2)
+
+# Iniciando a interface
+root.mainloop()
